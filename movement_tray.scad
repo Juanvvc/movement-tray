@@ -2,25 +2,43 @@
 // 5x2 minis, 25mm base, magnets 5x1
 // (c) Juan Vera, 2024
 
-// you can modify these parameters from the command linear_extrude
-rows=2;
-cols=5;
-texture="plain";
+/* Parameters */
+// Number of  rows
+rows=2; // [1:5]
+// Number of columns 
+cols=5; // [1:10]
+texture=0; // [0:Plain, 1:Bricks]
+
+/* [Bases] */
+// Base radius (mm). Add a tolerance of 0.25. Example: for a diameter of 25mm, real radius=12.5, adding tolerance base_r=12.75
+base_r = 25/2+0.25; // [20:0.25:50]
+// Base height  (mm)
+base_h = 3; // [1:0.1:5]
+// Margin around bases. Remember the tolerance in base_r
+base_m = -0.25; // [-0.5:0.25:10]
+// Magnet heigth. Add 0.05 for tolerance
+magnet_h = 1.05; // [1:0.05:2.1]
+// Magnet radius. Add 0.2 for tolerance
+magnet_r = 5.5/2; // [1:0.2:10.2]
+
+/* [Handlers] */
+base_w=base_r*2;
 handle_active=true;
+handle_height = 16; // [10:20]
+handle_width = 6;  // [1:10]
+handle_length = 2; // [1:5]
+handle1_row = 2; // [1:5]
+handle2_row = 3; // [1:10]
 
-// bases of the minis and magnets
-base_r = 25/2+0.25; // base radius
-base_h = 3; // base height
-base_m = -0.25; // margin around a base
-magnet_h = 1.05; // magnet height
-magnet_r = 5.5/2; //magnet radius
-
-// handle
-handle_height = 16;
-handle_width = 6;
-handle_length = 2;
-handle1_row = 2;
-handle2_row = 3;
+/* [Hidden] */
+// note: many dimensions are constant, because I want to match a base I modeled years ago in blender
+// DO NOT CHANGE THESE VALUES. The final base will scale these values
+// they are relative to a standard 25mm base
+hole_r = 25/2-1; // dimensions of the hole. If hole_r==0, do not make a hole
+hole_d = 2.1; // depth of the hole
+base_total_height = 3.11; // The total height of the base
+base_upper_r = 11.87; // The radius of the upper surface of a 25mm base
+base_upper_h = 1; // The height of the upper surface of a 25mm base
 
 // Optional handles
 module handle(handle_width, handle_height, handle_length) {
@@ -83,7 +101,7 @@ module movement_tray_plain(num_cols, num_rows, tray_height, tray_margin, handle_
     }
 }
 
-// bricks plate
+// bricks
 include <BOSL/constants.scad>
 use <BOSL/shapes.scad>
 module bricks_surface(brick_x, brick_y, brick_h, brick_o, tray_width, tray_depth) {
@@ -130,9 +148,9 @@ module movement_tray_bricks(num_cols, num_rows, tray_height, tray_margin, handle
 }
 
 module movement_tray(texture, num_cols, num_rows, tray_height=4.5, tray_margin=1.5, handle_active=true) {
-    if(texture == "plain") {
+    if(texture == 0) { // plain
         movement_tray_plain(num_cols, num_rows, tray_height, tray_margin, handle_active);
-    } if(texture == "bricks") {
+    } if(texture == 1) { // bricks
         movement_tray_bricks(num_cols, num_rows, tray_height, tray_margin, handle_active);
     }
 }
