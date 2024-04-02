@@ -18,8 +18,22 @@ base_h = 3; // [1:0.1:5]
 base_m = -0.25; // [-0.5:0.25:10]
 // Magnet heigth. Add 0.05 for tolerance
 magnet_h = 1.05; // [1:0.05:2.1]
-// Magnet radius. Add 0.2 for tolerance
-magnet_r = 5.5/2; // [1:0.2:10.2]
+// Magnet diameter. Add 0.5 for tolerance
+magnet_d = 5.5; // [1:0.5:10.5]
+
+/* [Bricks] */
+// x size of the bricks (mm)
+brick_x = 6.5; // [2:0.5:20]
+// y size of the bricks (mm)
+brick_y = 4.5; // [2:0.5:20]
+// separation of the bricks, in x, relative to brick_x
+brick_sep_x=1.01; // [1:0.01:1.5]
+// separation of the bricks, in y, relative to brick_y
+brick_sep_y=1.01; // [1:0.01:1.5]
+// factor to sink the top of the brick
+brick_f=0.99; // [0.95:0.01:1]
+// brick offset for each line
+brick_offset=3.25; // [0:0.25:10]
 
 /* [Handlers] */
 base_w=base_r*2;
@@ -58,7 +72,7 @@ module handle(handle_width, handle_height, handle_length) {
 }
 
 // bases holes (to be used in difference)
-module base_holes(num_cols, num_rows, base_r, base_h, base_m, magnet_h, magnet_r, tray_height) {
+module base_holes(num_cols, num_rows, base_r, base_h, base_m, magnet_h, magnet_d, tray_height) {
     union() {
         translate([0, 0, tray_height-base_h]) {
             for(i = [0:num_cols-1]) {
@@ -68,9 +82,9 @@ module base_holes(num_cols, num_rows, base_r, base_h, base_m, magnet_h, magnet_r
                             // base
                             cylinder(tray_height, r=base_r);
                             // magnet
-                            if(magnet_r > 0) {
+                            if(magnet_d > 0) {
                                 translate([0, 0, -magnet_h]) {
-                                    cylinder(2*magnet_h, r=magnet_r, $fn=100);
+                                    cylinder(2*magnet_h, d=magnet_d, $fn=100);
                                 }
                             }
                         }
@@ -97,27 +111,65 @@ module movement_tray_plain(num_cols, num_rows, tray_height, tray_margin, handle_
             }
         }
         // bases
-        base_holes(num_cols, num_rows, base_r, base_h, base_m, magnet_h, magnet_r, tray_height);
+        base_holes(num_cols, num_rows, base_r, base_h, base_m, magnet_h, magnet_d, tray_height);
     }
 }
 
 // bricks
-include <BOSL/constants.scad>
-use <BOSL/shapes.scad>
-module bricks_surface(brick_x, brick_y, brick_h, brick_o, tray_width, tray_depth) {
+
+
+module brick(x, y, h, r=1, fn=16, f=0.99) {
+    /* A brick using hull()
+    hull() {
+        translate([-x/2, -y/2, base_upper_h/2]) sphere(r=0.5, $fn=12);
+        translate([x/2, -y/2, base_upper_h/2]) sphere(r=0.5, $fn=12);
+        translate([x/2, y/2, base_upper_h/2]) sphere(r=0.5, $fn=12);
+        translate([-x/2, y/2, base_upper_h/2]) sphere(r=0.5, $fn=12);
+        
+        translate([-x/2, -y/2, -base_upper_h/2]) sphere(r=0.5, $fn=12);
+        translate([x/2, -y/2, -base_upper_h/2]) sphere(r=0.5, $fn=12);
+        translate([x/2, y/2, -base_upper_h/2]) sphere(r=0.5, $fn=12);
+        translate([-x/2, y/2, -base_upper_h/2]) sphere(r=0.5, $fn=12);
+    }*/
+    
+    /* A brick using simple shapes. Faster? */
+    translate([r, r, -r]) union() {
+        translate([0, 0, r]) sphere(r=r, $fn=fn);
+        translate([x-2*r, 0, r]) sphere(r=r, $fn=fn);
+        translate([0, y-2*r, r]) sphere(r=r, $fn=fn);
+        translate([x-2*r, y-2*r, r]) sphere(r=r, $fn=fn);
+        
+        translate([0, y-2*r, r]) rotate([90, 0, 0]) rotate([0, 0, 180/fn]) cylinder(r=r, h=y-2*r, $fn=fn);
+        translate([x-2*r, y-2*r, r]) rotate([90, 0, 0]) rotate([0, 0, 180/fn]) cylinder(r=r, h=y-2*r, $fn=fn);
+        
+        translate([0, y-2*r, r]) rotate([0, 90, 0]) rotate([0, 0, 180/fn]) cylinder(r=r, h=x-2*r, $fn=fn);
+        translate([0, 0, r]) rotate([0, 90, 0]) rotate([0, 0, 180/fn]) cylinder(r=r, h=x-2*r, $fn=fn);
+        
+        translate([0, 0, 0]) cube([x-2*r, y-2*r, r*2*f]);
+    }
+    
+    /* A brick using a cuboid
+    You also need:
+    include <BOSL/constants.scad>
+    use <BOSL/shapes.scad>
+    cuboid([x,y,h], fillet=0.5);
+    */
+}
+
+module bricks_surface(brick_x, brick_y, brick_o, tray_width, tray_depth, sep_x=1.2, sep_y=1.2, brick_r=1) {
     // note: the rotation is to have a clean brick line in the front line, but
     // it only works for a very specific set of parameters (offsets, brick size...)
     rotate([0, 0, 180]) intersection() {
         // brick_x, brick_y: size of the brick
         // brick_o: offset of each line of the brick
         // base_w: size of the base
-        cube([tray_width, tray_depth, brick_h], center=true);
+        cube([tray_width, tray_depth, 10], center=true);
         first_x = tray_width / brick_x / 2 + 1;
         first_y = tray_depth / brick_y / 2 + 1;
-        union() {
+        rotate([0, 0, 180]) union() {
             for(i=[-first_x:first_x]) {
                 for(j=[-first_y:first_y]) {
-                    translate([i*1.05*brick_x + (j%2)*brick_o, j*1.05*brick_y, 0]) cuboid([brick_x,brick_y,brick_h], fillet=0.5);
+                    translate([i*sep_x*brick_x + (j%2)*brick_o, j*sep_y*brick_y, 0]) brick(brick_x, brick_y, base_upper_h, r=brick_r);
                 }
             }
         }
@@ -134,7 +186,7 @@ module movement_tray_bricks(num_cols, num_rows, tray_height, tray_margin, handle
                 // main tray
                 cube([tray_width, tray_depth, tray_height-brick_h/2]);
                 // bricks
-                translate([tray_width/2, tray_depth/2, tray_height-brick_h/2]) bricks_surface(6.5, 4.5, brick_h, 6.5/2, tray_width, tray_depth);
+                translate([tray_width/2, tray_depth/2, tray_height-brick_h/2]) bricks_surface(brick_x, brick_y, brick_offset, tray_width, tray_depth, brick_sep_x, brick_sep_y);
                 // optional handles
                 if(handle_active) {
                     translate([2*handle1_row*(base_r+base_m)+tray_margin, (2*num_rows)*(base_r+base_m), tray_height/2]) handle(handle_width, handle_height, handle_length);
@@ -143,7 +195,7 @@ module movement_tray_bricks(num_cols, num_rows, tray_height, tray_margin, handle
             }
         }
         // bases
-        base_holes(num_cols, num_rows, base_r, base_h, base_m, magnet_h, magnet_r, tray_height);
+        base_holes(num_cols, num_rows, base_r, base_h, base_m, magnet_h, magnet_d, tray_height);
     }
 }
 
@@ -156,3 +208,4 @@ module movement_tray(texture, num_cols, num_rows, tray_height=4.5, tray_margin=1
 }
 
 movement_tray(texture,cols,rows,handle_active=handle_active);
+
